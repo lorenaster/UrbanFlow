@@ -51,5 +51,5 @@ def personalizareProfil(request):
 
 #TO DO notificari si alerte in timp real cu socket.io??
 
-#TO DO rapoarte si sugestii tot cu socket.io?
+#TO DO rapoarte si sugestii tot cu socketio?
 
