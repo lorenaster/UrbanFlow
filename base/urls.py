@@ -15,5 +15,8 @@ urlpatterns=[
     
     path('vizualizare-rute/', views.vizualizareRute, name="vizualizare-rute"),
     path('games/', views.games, name="games"),
+    path('notificari/', views.notificari, name="notificari"),
+
+    path('rapoarte/', views.rapoarte, name="rapoarte" ),
     path('personalizare-profil/', views.personalizareProfil, name="personalizare-profil"),
 ]
