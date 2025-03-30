@@ -11,7 +11,7 @@
     {% if request.user.is_authenticated %}
 
     <div> 
-        <a href="{%% url ''}"> Acasa </a>
+        <a href="{% url 'home'%}"> Acasa </a>
         <a href="{% url 'vizualizare-rute'%}"> Vizualizare Rute </a>
         <a href="{% url 'games' %}"> Puncte si Recompense </a>
         <a href="{% url 'notificari' %}"> Notificari </a>

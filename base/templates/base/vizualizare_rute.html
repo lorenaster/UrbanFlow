@@ -1,0 +1,52 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+
+<div>
+<h5>Tramvaie:</h5>
+{%for route in routes%}
+{% if route.route_type == 0 %}
+            <input type="submit" name="{{ route.route_short_name }}" value="{{ route.route_short_name }}" 
+            style="display: inline-block; margin-right: 10px;" />
+{% endif %}
+{%endfor%}
+</div>
+
+<div>
+    <h5>Autobuze:</h5>
+    {%for route in routes%}
+    {% if route.route_type == 3 %}
+                <input type="submit" name="{{ route.route_short_name }}" value="{{ route.route_short_name }}" 
+                style="display: inline-block; margin-right: 10px;" />
+    {% endif %}
+    {%endfor%}
+</div>
+
+<style>
+    .map-container {
+        width: 80%;  /* Adjust width (e.g., 50%, 300px, etc.) */
+        height: 600px; /* Adjust height */
+        max-width: 800px; /* Set a max size if needed */
+    }
+</style>
+<div class="map-container" >{{ map|safe }}</div>
+
+
+<div>
+    <form method="POST" action="">
+        {% csrf_token %}
+
+        <label>Current location:</label>
+        <input type="text" name="currentlocation" placeholder="Where are you?" />
+
+        <label>Destination:</label>
+        <input type="text" name="destination" placeholder="Where do you want to go?" />
+
+        <input type="submit" value="Search route" />
+    </form>
+
+</div>
+
+{% endblock content %}
+
