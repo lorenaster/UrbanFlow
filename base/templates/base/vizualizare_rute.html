@@ -2,26 +2,33 @@
 
 {% block content %}
 
+<script>
+    var routesData = {{ routes|safe }};  // Pass the data from Django to JavaScript
+</script>
 
 <div>
-<h5>Tramvaie:</h5>
+<p>Tramvaie:</p>
 {%for route in routes%}
 {% if route.route_type == 0 %}
             <input type="submit" name="{{ route.route_short_name }}" value="{{ route.route_short_name }}" 
-            style="display: inline-block; margin-right: 10px;" />
+            style="display: inline-block; margin-right: 10px;"
+            onclick="showRouteDetails('{{ route.route_short_name }}')"/>
 {% endif %}
 {%endfor%}
 </div>
 
 <div>
-    <h5>Autobuze:</h5>
+    <p>Autobuze:</p>
     {%for route in routes%}
     {% if route.route_type == 3 %}
                 <input type="submit" name="{{ route.route_short_name }}" value="{{ route.route_short_name }}" 
-                style="display: inline-block; margin-right: 10px;" />
+                style="display: inline-block; margin-right: 10px;" 
+                onclick="showRouteDetails('{{ route.route_short_name }}')"/>
     {% endif %}
     {%endfor%}
 </div>
+
+<div id="route-details"></div>
 
 <style>
     .map-container {
@@ -31,22 +38,6 @@
     }
 </style>
 <div class="map-container" >{{ map|safe }}</div>
-
-
-<div>
-    <form method="POST" action="">
-        {% csrf_token %}
-
-        <label>Current location:</label>
-        <input type="text" name="currentlocation" placeholder="Where are you?" />
-
-        <label>Destination:</label>
-        <input type="text" name="destination" placeholder="Where do you want to go?" />
-
-        <input type="submit" value="Search route" />
-    </form>
-
-</div>
 
 {% endblock content %}
 
