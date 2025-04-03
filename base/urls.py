@@ -2,14 +2,15 @@ from django.urls import path
 from . import views
 from django.http import HttpResponse
 
+
 urlpatterns=[
     path('', views.home , name="home"),
-
+    path('api/hello/', views.hello_world, name = "hello_world"),
     path('login/', views.loginPage, name="login"),
     path('logout/', views.logoutUser, name="logout"),
     path('register/', views.registerPage, name="register"),
     
-    path('vizualizare-rute/', views.vizualizareRute, name="vizualizare-rute"),
+    path( 'vizualizare-rute/', views.vizualizareRute, name="vizualizare-rute"),
     path('games/', views.games, name="games"),
     path('notificari/', views.notificari, name="notificari"),
 

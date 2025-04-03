@@ -3,6 +3,9 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
 
 import folium
 import geocoder
@@ -21,6 +24,14 @@ HEADERS = {
     "Accept": "application/json",
     "X-API-KEY": API_KEY
 }
+
+
+
+@api_view(['GET'])
+def hello_world(request):
+    return Response({"message": "Hello from Django!"})
+
+
 
 def home(request):
     return render(request, 'base/home.html')
@@ -103,6 +114,10 @@ def vizualizareRute(request):
  #TO DO 
     messages.error(request, "not implemented yet.")
     return redirect('home')
+
+
+
+
 
 def games(request):
  #TO DO 
