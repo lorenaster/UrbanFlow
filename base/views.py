@@ -115,10 +115,6 @@ def vizualizareRute(request):
     messages.error(request, "not implemented yet.")
     return redirect('home')
 
-
-
-
-
 def games(request):
  #TO DO 
     messages.error(request, "not implemented yet.")
