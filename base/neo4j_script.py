@@ -8,9 +8,9 @@ load_dotenv()
 
 
 # Connect to Neo4j
-uri = "bolt://localhost:7687"
+uri = "neo4j+s://dad62bc8.databases.neo4j.io"
 username = "neo4j"
-password = "password"
+password = os.getenv("NEO4J_PASSWORD")
 
 driver = GraphDatabase.driver(uri, auth=(username, password))
 
