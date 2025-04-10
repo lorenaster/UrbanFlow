@@ -100,3 +100,124 @@ class Neo4jClient:
         SET s.lat = $lat, s.lon = $lon, s.agency_id = $agency_id
         """
         tx.run(query, shape_id=shape_id, lat=lat, lon=lon, sequence=sequence, agency_id=agency_id)
+    def get_towns_by_city(self, city):
+        """
+        Get all towns from a specific city
+        """
+        with self.driver.session() as session:
+            result = session.read_transaction(self._get_towns_by_city, city)
+            return result
+
+    def _get_towns_by_city(self, tx, city):
+        query = """
+        MATCH (s:Stop)
+        WHERE s.city = $city AND s.town IS NOT NULL
+        RETURN DISTINCT s.town AS town
+        ORDER BY town
+        """
+        result = tx.run(query, city=city)
+        return [record["town"] for record in result]
+
+    def get_routes_by_town(self, town, agency_id):
+        """
+        Get all routes that have stops in a specific town
+        """
+        with self.driver.session() as session:
+            result = session.read_transaction(self._get_routes_by_town, town, agency_id)
+            return result
+
+    def _get_routes_by_town(self, tx, town, agency_id):
+        query = """
+        MATCH (r:Route)<-[:BELONGS_TO]-(t:Trip)-[:STOPS_AT]->(s:Stop)
+        WHERE s.town = $town AND r.agency_id = $agency_id
+        RETURN DISTINCT r.route_id AS route_id, 
+            r.short_name AS short_name, 
+            r.long_name AS long_name,
+            r.type AS type,
+            r.color AS color,
+            r.text_color AS text_color
+        ORDER BY r.short_name
+        """
+        result = tx.run(query, town=town, agency_id=agency_id)
+        return [dict(record) for record in result]
+
+    def get_route_details(self, route_id, agency_id):
+        """
+        Get detailed information about a specific route including its stops
+        """
+        with self.driver.session() as session:
+            route_info = session.read_transaction(self._get_route_info, route_id, agency_id)
+            if not route_info:
+                return None
+            
+            # Get stops for each direction
+            outbound_stops = session.read_transaction(
+                self._get_route_stops, route_id, "0", agency_id
+            )
+            inbound_stops = session.read_transaction(
+                self._get_route_stops, route_id, "1", agency_id
+            )
+            
+            # Get shape IDs for this route
+            shape_ids = session.read_transaction(self._get_route_shape_ids, route_id, agency_id)
+            
+            return {
+                "route_info": route_info,
+                "outbound_stops": outbound_stops,
+                "inbound_stops": inbound_stops,
+                "shape_ids": shape_ids
+            }
+
+    def _get_route_info(self, tx, route_id, agency_id):
+        query = """
+        MATCH (r:Route {route_id: $route_id, agency_id: $agency_id})
+        RETURN r.route_id AS route_id, 
+            r.short_name AS short_name, 
+            r.long_name AS long_name,
+            r.type AS type,
+            r.color AS color,
+            r.text_color AS text_color,
+            r.city AS city
+        """
+        result = tx.run(query, route_id=route_id, agency_id=agency_id)
+        record = result.single()
+        return dict(record) if record else None
+
+    def _get_route_stops(self, tx, route_id, direction_id, agency_id):
+        query = """
+        MATCH (r:Route {route_id: $route_id, agency_id: $agency_id})<-[:BELONGS_TO]-(t:Trip {direction_id: $direction_id})-[st:STOPS_AT]->(s:Stop)
+        RETURN DISTINCT s.stop_id AS stop_id,
+            s.name AS name,
+            s.lat AS lat,
+            s.lon AS lon,
+            s.town AS town
+        ORDER BY st.stop_sequence
+        """
+        result = tx.run(query, route_id=route_id, direction_id=direction_id, agency_id=agency_id)
+        return [dict(record) for record in result]
+
+    def _get_route_shape_ids(self, tx, route_id, agency_id):
+        query = """
+        MATCH (r:Route {route_id: $route_id, agency_id: $agency_id})<-[:BELONGS_TO]-(t:Trip)
+        WHERE t.shape_id IS NOT NULL
+        RETURN DISTINCT t.shape_id AS shape_id
+        """
+        result = tx.run(query, route_id=route_id, agency_id=agency_id)
+        return [record["shape_id"] for record in result]
+
+    def get_shape_points(self, shape_id):
+        """
+        Get all shape points for a specific shape
+        """
+        with self.driver.session() as session:
+            result = session.read_transaction(self._get_shape_points, shape_id)
+            return result
+
+    def _get_shape_points(self, tx, shape_id):
+        query = """
+        MATCH (sp:ShapePoint {shape_id: $shape_id})
+        RETURN sp.lat AS lat, sp.lon AS lon, sp.sequence AS sequence
+        ORDER BY sp.sequence
+        """
+        result = tx.run(query, shape_id=shape_id)
+        return [dict(record) for record in result]
