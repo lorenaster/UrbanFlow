@@ -1,0 +1,32 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+<form id="route-form" action="{% url 'calculate_route' %}" method="POST">
+  {% csrf_token %}
+  <input type="text" id="start-location" name="start" placeholder="Start location" autocomplete="off">
+  <ul id="autocomplete-start"></ul>
+
+  <input type="text" id="end-location" name="end" placeholder="End location" autocomplete="off">
+  <ul id="autocomplete-end"></ul>
+
+  <button type="submit">Get Route</button>
+</form>
+
+{% if duration_car %}
+    <div>
+        <p>Masina: {{ duration_car }} min</p>
+        <p>Uber: uber_route_time min, uber_price lei, ajunge in aprox uber_time min </p>
+        <p>Bicicleta: {{duration_bicl}} min </p>
+        <p>Transport public: 
+          {%for route in routes%}
+          <p>{{route}}</p>
+          {%endfor%}
+        </p>
+    </div>
+    <div class="map-container">
+      {{ map|safe }}
+  </div>
+{% endif %}
+
+{% endblock content %}

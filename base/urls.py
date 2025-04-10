@@ -11,6 +11,10 @@ urlpatterns=[
     path('register/', views.registerPage, name="register"),
     
     path( 'vizualizare-rute/', views.vizualizareRute, name="vizualizare-rute"),
+    path( 'configurare-trasee/', views.configurareTrasee, name="configurare-trasee"),
+    path("configurare-trasee/autocomplete/", views.autocomplete, name="autocomplete"),
+    path('configurare-trasee/calculate-route/', views.calculate_route, name='calculate_route'),
+
     path('games/', views.games, name="games"),
     path('notificari/', views.notificari, name="notificari"),
 

@@ -1,0 +1,5 @@
+.map-container {
+    width: 80%;  /* Adjust width (e.g., 50%, 300px, etc.) */
+    height: 600px; /* Adjust height */
+    max-width: 800px; /* Set a max size if needed */
+}

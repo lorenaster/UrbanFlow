@@ -6,6 +6,7 @@
     <meta http-equiv='X-UA-Compatible' content='IE=edge'>
     <title>UrbanFlow: {% block title %}{% endblock %}</title>
     <script src="{% static 'base/script.js' %}" defer></script>
+    <link rel="stylesheet" href="{% static 'base/style.css' %}">
     <meta name='viewport' content='width=device-width, initial-scale=1'>
 </head>
 <body>
@@ -13,8 +14,9 @@
     {% if request.user.is_authenticated %}
 
     <div> 
-        <a href="{% url 'home'%}"> Acasa </a>
-        <a href="{% url 'vizualizare-rute'%}"> Vizualizare Rute </a>
+        <a href="{% url 'home' %}"> Acasa </a>
+        <a href="{% url 'vizualizare-rute' %}"> Vizualizare Rute </a>
+        <a href="{% url 'configurare-trasee' %}"> Configurare Trasee</a>
         <a href="{% url 'games' %}"> Puncte si Recompense </a>
         <a href="{% url 'notificari' %}"> Notificari </a>
         <a href="{% url 'rapoarte' %}"> Rapoarte si Sugestii </a>
