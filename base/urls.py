@@ -21,7 +21,7 @@ urlpatterns=[
     path('rapoarte/', views.rapoarte, name="rapoarte" ),
     path('personalizare-profil/', views.personalizareProfil, name="personalizare-profil"),
 
-    path('control-trafic/', views.controlTrafic, name="control-trafic"),
-    path('config-rute/', views.configRute, name="config-rute"),
-    path('admin-parteneri/', views.adminParteneri, name="admin-parteneri"),
+    # path('control-trafic/', views.controlTrafic, name="control-trafic"),
+    # path('config-rute/', views.configRute, name="config-rute"),
+    # path('admin-parteneri/', views.adminParteneri, name="admin-parteneri"),
 ]

@@ -10,8 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+# transit_project/settings.py
+import os
 from pathlib import Path
-
+from dotenv import load_dotenv
+load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -40,6 +43,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'base.apps.BaseConfig',
     'corsheaders',
+    'base.tranzy_app',
 ]
 
 MIDDLEWARE = [
@@ -129,3 +133,58 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = True
 ALLOWED_HOSTS = ['192.168.0.153', 'localhost', '127.0.0.1']
+
+
+NEO4J_URI = os.getenv("NEO4J_URI")
+NEO4J_USERNAME = os.getenv("NEO4J_USERNAME")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+
+
+TRANZY_BASE_URL = os.getenv('TRANZY_BASE_URL', 'https://api.tranzy.ai/v1/opendata')
+TRANZY_API_KEY = os.getenv('TRANZY_API_KEY', '')
+
+
+TRANZY_AGENCY_MAPPING = {
+    'Iasi': {
+        'agency_id': '1',
+        'agency_name': 'SCTP Iasi',
+        'agency_url': 'https://www.sctpiasi.ro/',
+        'agency_timezone': 'Europe/Bucharest',
+        'agency_lang': 'ro',
+    },
+    'Cluj-Napoca': {
+        'agency_id': '2',
+        'agency_name': 'CTP Cluj',
+        'agency_url': 'https://www.ctpcluj.ro/',
+        'agency_timezone': 'Europe/Bucharest',
+        'agency_lang': 'ro',
+    },
+    'Chisinau': {
+        'agency_id': '4',
+        'agency_name': 'RTEC&PUA Chisinau',
+        'agency_url': 'https://www.rtec.md/',
+        'agency_timezone': 'Europe/Bucharest',
+        'agency_lang': 'ro',
+    },
+    'Botosani': {
+        'agency_id': '6',
+        'agency_name': 'Eltrans Botosani',
+        'agency_url': 'https://www.eltransbt.ro/',
+        'agency_timezone': 'Europe/Bucharest',
+        'agency_lang': 'ro',
+    },
+    'Timisoara': {
+        'agency_id': '8',
+        'agency_name': 'STPT Timisoara',
+        'agency_url': 'https://www.ratt.ro/',
+        'agency_timezone': 'Europe/Bucharest',
+        'agency_lang': 'ro',
+    },
+    'Oradea': {
+        'agency_id': '9',
+        'agency_name': 'OTL Oradea',
+        'agency_url': 'https://www.otlra.ro/',
+        'agency_timezone': 'Europe/Bucharest',
+        'agency_lang': 'ro',
+    },
+}
