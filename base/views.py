@@ -6,6 +6,9 @@ from django.contrib.auth.forms import UserCreationForm
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth import get_user_model
+
 from geopy.geocoders import Nominatim
 
 from rest_framework.views import APIView
@@ -48,74 +51,70 @@ UBER_CLIENT_SECRET = "ND1KBZa_xguFNVkiHMNJoVfDK3xm19tWxo4g3IZQ"
 def hello_world(request):
     return Response({"message": "Hello from Django!"})
 
-
-
-def home(request):
-    return render(request, 'base/home.html')
-
+@api_view(['POST'])
 def loginPage(request):
-    page = 'login'
-
     if request.user.is_authenticated:
-        return redirect('home')
+        
+            return Response({"message": "User already authenticated."}, status=status.HTTP_200_OK)
 
-    if request.method == 'POST':
-        username = request.POST.get('username').lower()
-        password = request.POST.get('password')
+    username = request.data.get('username').lower()
+    password = request.data.get('password')
 
-        user = authenticate(request, username=username, password=password)
+    user = authenticate(request, username=username, password=password)
 
-        if user is not None:
-            login(request, user)
-            return redirect("home")
-            messages.success(request, 'User loged in')
-        else:
-            messages.error(request, 'Username OR password does not exit')
+    if user is not None:
+        login(request, user)
+        return Response({'message': 'Logged in successfully', 'user': user.username})
+    else:
+        return Response({'error': 'Invalid credentials'}, status=400)
 
-    context = {'page': page}
-    return render(request, 'base/login_register.html', context)
-    messages.error(request, "not implemented yet.")
-    return redirect('home')
-
+@api_view(['POST'])
 def logoutUser(request):
     logout(request)
-    messages.success(request, "user logged out")
-    return redirect('home')
-    messages.error(request, "not implemented yet.")
-    return redirect('home')
+    return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
 
+@api_view(['POST'])
 def registerPage(request):
-    if request.method == 'POST':
-        form = UserCreationForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Your account has been created successfully!')
-            return redirect('login')
-    else:
-        form = UserCreationForm()
-    return render(request, 'base/login_register.html', {'form': form})
-    messages.error(request, "not implemented yet.")
-    return redirect('home')
+    username = request.data.get('username')
+    password = request.data.get('password')
+    password_confirm = request.data.get('password_confirm')
 
-@login_required(login_url='login')
-def vizualizareRute(request):
+    # validation checks
+    if password != password_confirm:
+        return Response({"detail": "Passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not username or not password:
+        return Response({"detail": "Username and password are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # check if username already exists
+    if get_user_model().objects.filter(username=username).exists():
+        return Response({"detail": "Username already taken."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = get_user_model().objects.create_user(username=username, password=password)
+        return Response({"detail": "User successfully registered.", "username": user.username}, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+@api_view(['GET'])
+def get_tranzy_info(request):
     #Loading map
-    map = folium.Map(location=[47.151726, 27.587914], zoom_start=10)
-    g = geocoder.ip('me')
-    folium.Marker(
-        location=g.latlng,
-        popup="You",
-    ).add_to(map)
-    folium.plugins.LocateControl(auto_start=True).add_to(map)
-    map_html = map._repr_html_()
+    # map = folium.Map(location=[47.151726, 27.587914], zoom_start=10)
+    # g = geocoder.ip('me')
+    # folium.Marker(
+    #     location=g.latlng,
+    #     popup="You",
+    # ).add_to(map)
+    # folium.plugins.LocateControl(auto_start=True).add_to(map)
+    # map_html = map._repr_html_()
 
     #Get bus/tram, type, long name from api
     routes_url = f"{BASE_URL}/routes"
     routes_response = requests.get(routes_url, headers=HEADERS)
 
     if routes_response.status_code != 200:
-        message.error(request, "Error fetching routes")
-        exit()
+        return Response({'error': 'Error fetching routes'}, status=500)
 
     routes_data = routes_response.json()
 
@@ -128,16 +127,12 @@ def vizualizareRute(request):
         "route_long_name": route["route_long_name"]
     })
 
-    return render(request, 'base/vizualizare_rute.html', {'map': map_html, 'routes': routes})
- #TO DO 
-    messages.error(request, "not implemented yet.")
-    return redirect('home')
+    return Response({'routes': routes})
 
-def configurareTrasee(request):
-    return render(request, 'base/configurare_trasee.html', {'ORS_API_KEY': ORS_API_KEY})
 
+@api_view(['GET'])
 def autocomplete(request):
-    query = request.GET.get("text", "")
+    query = request.data.get("text", "")
     if len(query) < 3:
         return JsonResponse({"features": []})
 
@@ -150,150 +145,148 @@ def autocomplete(request):
 
     try:
         response = requests.get(url, params=params)
-        return JsonResponse(response.json())
+        return Response(response.json())
     except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+        return Response({"error": str(e)}, status=500)
 
+def geocode(place):
+    geocode_url = "https://api.openrouteservice.org/geocode/search"
+    params = {
+        "text": place,
+        "size": 1,
+        "api_key": ORS_API_KEY,
+        "boundary.country": "RO"
+    }
+    response = requests.get(geocode_url, params=params)
+    data = response.json()
 
-def calculate_route(request):
-    UBER_AUTH_URL = 'https://login.uber.com/oauth/v2/token'
-    UBER_API_URL = 'https://api.uber.com/v1.2'
-    duration = None  # Initialize the duration to None
-    map=None
-    uber_price = None
-    uber_time = None
-
-    if request.method == 'POST':
-        start_location = request.POST.get('start')
-        end_location = request.POST.get('end')
-
-        # Function to geocode a place name using ORS Geocoding API
-        def geocode_place(place):
-            geocode_url = "https://api.openrouteservice.org/geocode/search"
-            params = {
-                "text": place,
-                "size": 1,
-                "api_key": ORS_API_KEY,
-                "boundary.country": "RO"
-            }
-            response = requests.get(geocode_url, params=params)
-            data = response.json()
-
-            if data.get("features"):
-                return data["features"][0]["geometry"]["coordinates"]  # [lon, lat]
-            else:
-                return None
-
-        # Get coordinates for both locations
-        start_coords = geocode_place(start_location)
-        end_coords = geocode_place(end_location)
-
-        print(f"start: {start_coords}, finish: {end_coords}")
-
-        # ORS API request to calculate the route
-        route_url_car = "https://api.openrouteservice.org/v2/directions/driving-car"
-        headers = {
-        "Authorization": ORS_API_KEY
-        }
-
-        body = {
-            "coordinates": [start_coords, end_coords]
-        }
-
-        #pentru masini
-        try:
-            response = requests.post(route_url_car, json=body, headers=headers)
-            response.raise_for_status()  # Raise an error for non-2xx codes
-            route_data_car = response.json()
-        except Exception as e:
-            print(f"Error with the API request: {e}")
-            route_data_car = {}
-
-        if 'routes' in route_data_car and len(route_data_car['routes']) > 0 and start_coords!=end_coords:
-            duration_in_seconds = route_data_car['routes'][0]['summary']['duration']
-            duration_car = int(duration_in_seconds / 60)  # Convert to minutes
-       
-        #pentru biciclete
-        route_url_bicl = "https://api.openrouteservice.org/v2/directions/cycling-regular"
-
-        try:
-            response = requests.post(route_url_bicl, json=body, headers=headers)
-            response.raise_for_status()  # Raise an error for non-2xx codes
-            route_data_bicl = response.json()
-        except Exception as e:
-            print(f"Error with the API request: {e}")
-            route_data_bicl = {}
-
-        duration = None  # default in case of error
-        if 'routes' in route_data_bicl and len(route_data_bicl['routes']) > 0 and start_coords != end_coords:
-            duration_in_seconds = route_data_bicl['routes'][0]['summary']['duration']
-            duration_bicl = int(duration_in_seconds / 60)  # Convert to minutes
-
-        #public transport
-        public_transport_routes=get_public_transport_routes(start_coords[1], start_coords[0], end_coords[1], end_coords[0])
-
-
-        #Render Folium Map with route 
-        encoded_geometry = route_data_car['routes'][0]['geometry']
-        #ruta masina
-        route_coords = polyline.decode(encoded_geometry)  # This gives [(lat, lon), ...]
-
-            # Create the map
-        midpoint = [  # Calculate midpoint for centering the map
-            (start_coords[1] + end_coords[1]) / 2,
-            (start_coords[0] + end_coords[0]) / 2
-        ]
-        map = folium.Map(location=midpoint, zoom_start=12)
-
-        # Add route line
-        folium.PolyLine(route_coords, color="blue", weight=5, opacity=0.8).add_to(map)
-
-            # Add start and end markers
-        folium.Marker(location=[start_coords[1], start_coords[0]], tooltip="Start").add_to(map)
-        folium.Marker(location=[end_coords[1], end_coords[0]], tooltip="End").add_to(map)
-
-        map = map._repr_html_()  # Render HTML for template
-
-        return render(request, 'base/configurare_trasee.html', {'duration_car': duration_car, 'duration_bicl': duration_bicl,
-                                                                 'map': map, 'routes': public_transport_routes})
+    if data.get("features"):
+        return data["features"][0]["geometry"]["coordinates"]  # [lon, lat]
     else:
-        return render(request, 'base/configurare_trasee.html')
+        return None
 
-def games(request):
- #TO DO 
-    messages.error(request, "not implemented yet.")
-    return redirect('home')
+@api_view(['GET'])
+def car_route(request):
+    start_place = request.query_params.get('start')
+    end_place = request.query_params.get('end')
 
-def notificari(request):
- #TO DO 
-    messages.error(request, "not implemented yet.")
-    return redirect('home')
+    if not start_place or not end_place:
+        return Response({"error": "Missing start or end location"}, status=400)
 
-def rapoarte(request):
- #TO DO 
-    messages.error(request, "not implemented yet.")
-    return redirect('home')
+    start_coords=geocode(start_place)
+    end_coords=geocode(end_place)
 
-def personalizareProfil(request):
- #TO DO 
-    messages.error(request, "not implemented yet.")
-    return redirect('home')
+    url = "https://api.openrouteservice.org/v2/directions/driving-car"
+    headers = {"Authorization": ORS_API_KEY}
+    body = {"coordinates": [start_coords, end_coords]}
+    response = requests.post(url, json=body, headers=headers).json()
 
-@login_required(login_url='login')
-def controlTrafic(request):
- #TO DO 
-    messages.error(request, "not implemented yet.")
-    return redirect('home')
+    duration = int(response['routes'][0]['summary']['duration'] / 60)
+    geometry = response['routes'][0]['geometry']
+    route_shape = polyline.decode(geometry)
 
-def configRute(request):
- #TO DO 
-    messages.error(request, "not implemented yet.")
-    return redirect('home')
+    return Response({
+        "car_duration": duration, 
+        "car_route_shape": route_shape
+    })
 
-def adminParteneri(request):
- #TO DO 
-    messages.error(request, "not implemented yet.")
-    return redirect('home')
+@api_view(['GET'])
+def bike_route(request):
+    start_place = request.query_params.get('start')
+    end_place = request.query_params.get('end')
+
+    if not start_place or not end_place:
+        return Response({"error": "Missing start or end location"}, status=400)
+
+    start_coords=geocode(start_place)
+    end_coords=geocode(end_place)
+
+    url = "https://api.openrouteservice.org/v2/directions/cycling-regular"
+    headers = {"Authorization": ORS_API_KEY}
+    body = {"coordinates": [start_coords, end_coords]}
+    response = requests.post(url, json=body, headers=headers).json()
+
+    duration = int(response['routes'][0]['summary']['duration'] / 60)
+    geometry = response['routes'][0]['geometry']
+    route_shape = polyline.decode(geometry)
+
+    return Response({
+        "bike_duration": duration, 
+        "bike_route_shape": route_shape
+    })
+
+#returneaza o lista cu statie, autobuz, statie, autobuz etc
+@api_view(['GET'])
+def public_transport_route(request): 
+    start_place = request.query_params.get('start')
+    end_place = request.query_params.get('end')
+
+    if not start_place or not end_place:
+        return Response({"error": "Missing start or end location"}, status=400)
+
+    start_coords=geocode(start_place)
+    end_coords=geocode(end_place)
+    public_transport_routes=get_public_transport_routes(start_coords[1], start_coords[0], end_coords[1], end_coords[0])
+
+    return Response({
+        "public_transport_routes": public_transport_routes
+    })
+
+        # #Render Folium Map with route 
+        # encoded_geometry = route_data_car['routes'][0]['geometry']
+        # #ruta masina
+        # route_coords = polyline.decode(encoded_geometry)  # This gives [(lat, lon), ...]
+
+        #     # Create the map
+        # midpoint = [  # Calculate midpoint for centering the map
+        #     (start_coords[1] + end_coords[1]) / 2,
+        #     (start_coords[0] + end_coords[0]) / 2
+        # ]
+        # map = folium.Map(location=midpoint, zoom_start=12)
+
+        # # Add route line
+        # folium.PolyLine(route_coords, color="blue", weight=5, opacity=0.8).add_to(map)
+
+        #     # Add start and end markers
+        # folium.Marker(location=[start_coords[1], start_coords[0]], tooltip="Start").add_to(map)
+        # folium.Marker(location=[end_coords[1], end_coords[0]], tooltip="End").add_to(map)
+
+        # map = map._repr_html_()  # Render HTML for template
+
+# def games(request):
+#  #TO DO 
+#     messages.error(request, "not implemented yet.")
+#     return redirect('home')
+
+# def notificari(request):
+#  #TO DO 
+#     messages.error(request, "not implemented yet.")
+#     return redirect('home')
+
+# def rapoarte(request):
+#  #TO DO 
+#     messages.error(request, "not implemented yet.")
+#     return redirect('home')
+
+# def personalizareProfil(request):
+#  #TO DO 
+#     messages.error(request, "not implemented yet.")
+#     return redirect('home')
+
+# @login_required(login_url='login')
+# def controlTrafic(request):
+#  #TO DO 
+#     messages.error(request, "not implemented yet.")
+#     return redirect('home')
+
+# def configRute(request):
+#  #TO DO 
+#     messages.error(request, "not implemented yet.")
+#     return redirect('home')
+
+# def adminParteneri(request):
+#  #TO DO 
+#     messages.error(request, "not implemented yet.")
+#     return redirect('home')
 
 #TO DO rapoarte si sugestii tot cu socketio?
-
