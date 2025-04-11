@@ -132,7 +132,7 @@ def get_tranzy_info(request):
 
 @api_view(['GET'])
 def autocomplete(request):
-    query = request.data.get("text", "")
+    query = request.query_params.get("text", "")
     if len(query) < 3:
         return JsonResponse({"features": []})
 
@@ -145,7 +145,11 @@ def autocomplete(request):
 
     try:
         response = requests.get(url, params=params)
-        return Response(response.json())
+        data = response.json()
+        
+        location_names = [{"label": feature["properties"]["label"]} for feature in data.get("features", [])]
+
+        return Response({"features": location_names})
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 
