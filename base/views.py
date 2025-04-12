@@ -15,7 +15,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .tranzy_app.neo4j_client import Neo4jClient
 from django.conf import settings
-import folium
 import json
 
 import folium
@@ -24,6 +23,7 @@ import geocoder
 import polyline
 
 from .neo4j_route_functions import get_public_transport_routes
+from .utils import geocode, get_car_route, get_bike_route, get_public_transport_route_data
 
 import requests
 from dotenv import load_dotenv
@@ -57,8 +57,11 @@ def loginPage(request):
         
             return Response({"message": "User already authenticated."}, status=status.HTTP_200_OK)
 
-    username = request.data.get('username').lower()
+    username = request.data.get('username')
     password = request.data.get('password')
+
+    if not username or not password:
+        return Response({'error': 'Username and password are required'}, status=400)
 
     user = authenticate(request, username=username, password=password)
 
@@ -77,6 +80,7 @@ def logoutUser(request):
 def registerPage(request):
     username = request.data.get('username')
     password = request.data.get('password')
+    email = request.data.get('email')
     password_confirm = request.data.get('password_confirm')
 
     # validation checks
@@ -92,7 +96,10 @@ def registerPage(request):
 
     try:
         user = get_user_model().objects.create_user(username=username, password=password)
-        return Response({"detail": "User successfully registered.", "username": user.username}, status=status.HTTP_201_CREATED)
+        return Response({"detail": "User successfully registered.", 
+                         "username": user.username,
+                         "email": user.email}, 
+                         status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -153,22 +160,6 @@ def autocomplete(request):
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 
-def geocode(place):
-    geocode_url = "https://api.openrouteservice.org/geocode/search"
-    params = {
-        "text": place,
-        "size": 1,
-        "api_key": ORS_API_KEY,
-        "boundary.country": "RO"
-    }
-    response = requests.get(geocode_url, params=params)
-    data = response.json()
-
-    if data.get("features"):
-        return data["features"][0]["geometry"]["coordinates"]  # [lon, lat]
-    else:
-        return None
-
 @api_view(['GET'])
 def car_route(request):
     start_place = request.query_params.get('start')
@@ -177,22 +168,11 @@ def car_route(request):
     if not start_place or not end_place:
         return Response({"error": "Missing start or end location"}, status=400)
 
-    start_coords=geocode(start_place)
-    end_coords=geocode(end_place)
+    start_coords = geocode(start_place)
+    end_coords = geocode(end_place)
+    data = get_car_route(start_coords, end_coords)
 
-    url = "https://api.openrouteservice.org/v2/directions/driving-car"
-    headers = {"Authorization": ORS_API_KEY}
-    body = {"coordinates": [start_coords, end_coords]}
-    response = requests.post(url, json=body, headers=headers).json()
-
-    duration = int(response['routes'][0]['summary']['duration'] / 60)
-    geometry = response['routes'][0]['geometry']
-    route_shape = polyline.decode(geometry)
-
-    return Response({
-        "car_duration": duration, 
-        "car_route_shape": route_shape
-    })
+    return Response(data)
 
 @api_view(['GET'])
 def bike_route(request):
@@ -202,22 +182,11 @@ def bike_route(request):
     if not start_place or not end_place:
         return Response({"error": "Missing start or end location"}, status=400)
 
-    start_coords=geocode(start_place)
-    end_coords=geocode(end_place)
+    start_coords = geocode(start_place)
+    end_coords = geocode(end_place)
+    data = get_bike_route(start_coords, end_coords)
 
-    url = "https://api.openrouteservice.org/v2/directions/cycling-regular"
-    headers = {"Authorization": ORS_API_KEY}
-    body = {"coordinates": [start_coords, end_coords]}
-    response = requests.post(url, json=body, headers=headers).json()
-
-    duration = int(response['routes'][0]['summary']['duration'] / 60)
-    geometry = response['routes'][0]['geometry']
-    route_shape = polyline.decode(geometry)
-
-    return Response({
-        "bike_duration": duration, 
-        "bike_route_shape": route_shape
-    })
+    return Response(data)
 
 #returneaza o lista cu statie, autobuz, statie, autobuz etc
 @api_view(['GET'])
@@ -230,11 +199,14 @@ def public_transport_route(request):
 
     start_coords=geocode(start_place)
     end_coords=geocode(end_place)
-    public_transport_routes=get_public_transport_routes(start_coords[1], start_coords[0], end_coords[1], end_coords[0])
 
-    return Response({
-        "public_transport_routes": public_transport_routes
-    })
+    if not start_coords or not end_coords:
+        return Response({"error": "Could not geocode one or both locations"}, status=400)
+    
+    data = get_public_transport_route_data(start_coords, end_coords)
+
+    return Response(data)
+
 
         # #Render Folium Map with route 
         # encoded_geometry = route_data_car['routes'][0]['geometry']

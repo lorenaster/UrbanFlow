@@ -79,16 +79,17 @@ def is_valid(lat, lon, is_at_start, const_lat, const_lon):
             else:
                 return 0
 
-def calculate_routes(start_name, end_name):
+def calculate_routes(start_name, start_lat, start_lon, end_name, end_lat, end_lon):
     with driver.session(database="neo4j") as session:
         # First shortest path
         query_1 = """
-        MATCH (a:Stop {name: $start_name }), (c:Stop {name: $end_name})
+        MATCH (a:Stop {name: $start_name, lat: $start_lat, lon:$start_lon }), (c:Stop {name: $end_name, lat: $end_lat, lon:$end_lon})
         MATCH p = allShortestPaths((a)-[:STOPS_AT*]-(c))
         RETURN [node IN nodes(p) | node.name] AS itinerary
         LIMIT 1
         """
-        result_1 = session.run(query_1, {"start_name": start_name, "end_name": end_name})
+        result_1 = session.run(query_1, {"start_name": start_name, "start_lat":start_lat, "start_lon":start_lon,
+                                          "end_name": end_name, "end_lat": end_lat, "end_lon": end_lon})
         first_route = []
         for record in result_1:
             first_route = record["itinerary"]
@@ -138,8 +139,11 @@ def get_public_transport_routes(start_lat, start_lon, end_lat, end_lon):
 
     for close_station_start in closest_stops_start:
         if(is_valid(close_station_start["lat"], close_station_start["lon"],1, end_lat, end_lon)):
-            valid_closest_stops_start.append(close_station_start)
-
+            valid_closest_stops_start.append({
+                "name": close_station_start["name"],
+                "lat": close_station_start["lat"],
+                "lon": close_station_start["lon"]
+            })
 
     #find valid stops at the end location
     closest_stops_end=find_closest_stops(end_lat, end_lon)
@@ -147,7 +151,11 @@ def get_public_transport_routes(start_lat, start_lon, end_lat, end_lon):
 
     for close_station_end in closest_stops_end:
         if(is_valid(close_station_end["lat"], close_station_end["lon"],0 , start_lat, start_lon)):
-            valid_closest_stops_end.append(close_station_end)
+            valid_closest_stops_end.append({
+                "name": close_station_end["name"],
+                "lat": close_station_end["lat"],
+                "lon": close_station_end["lon"]
+             })
 
     #print(closest_stops_start)
     #print("===========")
@@ -156,13 +164,17 @@ def get_public_transport_routes(start_lat, start_lon, end_lat, end_lon):
     routes=[]
     for start_stop in valid_closest_stops_start[:2]:
         for end_stop in valid_closest_stops_end[:2]:
-            route=calculate_routes(start_stop['name'], end_stop['name'])
+            route=calculate_routes(start_stop['name'], start_stop['lat'], start_stop['lon'],
+                                    end_stop['name'], end_stop['lat'], end_stop['lon'])
             routes.append(route)
 
     return routes
 
 routes=get_public_transport_routes(start_lat, start_lon, end_lat, end_lon)
-print(routes)
+
+#Shape
+
+
 
 
 driver.close()
